@@ -15,6 +15,8 @@ export default function SchedulePanel() {
   const [endDate, setEndDate] = useState('');
   const [color, setColor] = useState('#7c3aed');
   const [error, setError] = useState('');
+  const [fetching, setFetching] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -29,12 +31,30 @@ export default function SchedulePanel() {
     try {
       const data = await scheduleService.list();
       setSchedules(data);
+      setFetchError('');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('gatherup_cached_schedules', JSON.stringify(data));
+      }
     } catch (err) {
       console.error(err);
+      setFetchError('일정을 불러오지 못했습니다.');
+    } finally {
+      setFetching(false);
     }
   }, []);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('gatherup_cached_schedules');
+      if (cached) {
+        try {
+          setSchedules(JSON.parse(cached));
+          setFetching(false);
+        } catch {
+          localStorage.removeItem('gatherup_cached_schedules');
+        }
+      }
+    }
     fetchSchedules();
   }, [fetchSchedules]);
 
@@ -83,6 +103,7 @@ export default function SchedulePanel() {
         await scheduleService.create(startDate, endDate, title.trim(), color);
       }
       resetForm();
+      setFetching(true);
       fetchSchedules();
     } catch (err: any) {
       setError(err.response?.data?.error || '저장에 실패했습니다.');
@@ -106,6 +127,7 @@ export default function SchedulePanel() {
     try {
       await scheduleService.delete(deletingId);
       setDeletingId(null);
+      setFetching(true);
       fetchSchedules();
     } catch (err: any) {
       alert(err.response?.data?.error || '삭제에 실패했습니다.');
@@ -264,6 +286,7 @@ export default function SchedulePanel() {
       </div>
 
       {renderCalendar()}
+      {fetchError && <p style={{ color: 'var(--danger)', fontSize: '0.875rem', marginBottom: '1rem' }}>{fetchError}</p>}
 
       {/* Schedule Form */}
       {showForm && (
@@ -328,7 +351,11 @@ export default function SchedulePanel() {
 
       {/* Schedule List */}
       <h3 className="section-title">등록된 일정 목록</h3>
-      {schedules.length === 0 ? (
+      {fetching ? (
+        <div className="glass-card empty-state">
+          <p className="empty-state-text">일정을 불러오는 중입니다.</p>
+        </div>
+      ) : schedules.length === 0 ? (
         <div className="glass-card empty-state">
           <p className="empty-state-text">등록된 일정이 없습니다.</p>
         </div>

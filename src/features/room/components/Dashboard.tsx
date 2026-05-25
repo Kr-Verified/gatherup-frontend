@@ -14,6 +14,8 @@ type View = 'dashboard' | 'room' | 'schedule';
 export default function Dashboard() {
   const { nickname, profileImageUrl, theme, logout } = useUserStore();
   const [rooms, setRooms] = useState<RoomResponse[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(true);
+  const [roomsError, setRoomsError] = useState('');
   const [view, setView] = useState<View>('dashboard');
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -26,12 +28,30 @@ export default function Dashboard() {
     try {
       const data = await roomService.listMyRooms();
       setRooms(data);
+      setRoomsError('');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('gatherup_cached_rooms', JSON.stringify(data));
+      }
     } catch (err) {
       console.error('Failed to fetch rooms', err);
+      setRoomsError('방 목록을 불러오지 못했습니다.');
+    } finally {
+      setRoomsLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('gatherup_cached_rooms');
+      if (cached) {
+        try {
+          setRooms(JSON.parse(cached));
+          setRoomsLoading(false);
+        } catch {
+          localStorage.removeItem('gatherup_cached_rooms');
+        }
+      }
+    }
     fetchRooms();
   }, [fetchRooms]);
 
@@ -112,7 +132,15 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {rooms.length === 0 ? (
+          {roomsError && (
+            <p style={{ color: 'var(--danger)', fontSize: '0.875rem', marginBottom: '1rem' }}>{roomsError}</p>
+          )}
+
+          {roomsLoading ? (
+            <div className="glass-card empty-state">
+              <p className="empty-state-text">방 목록을 불러오는 중입니다.</p>
+            </div>
+          ) : rooms.length === 0 ? (
             <div className="glass-card empty-state">
               <p className="empty-state-text">아직 참여한 방이 없습니다.<br />방을 만들거나 초대코드로 입장하세요!</p>
               <div className="flex-gap" style={{ justifyContent: 'center' }}>
@@ -157,13 +185,13 @@ export default function Dashboard() {
       {showCreateModal && (
         <CreateRoomModal
           onClose={() => setShowCreateModal(false)}
-          onCreated={() => { setShowCreateModal(false); fetchRooms(); }}
+          onCreated={() => { setShowCreateModal(false); setRoomsLoading(true); fetchRooms(); }}
         />
       )}
       {showJoinModal && (
         <JoinRoomModal
           onClose={() => setShowJoinModal(false)}
-          onJoined={() => { setShowJoinModal(false); fetchRooms(); }}
+          onJoined={() => { setShowJoinModal(false); setRoomsLoading(true); fetchRooms(); }}
         />
       )}
       {showProfileModal && <ProfileSettingsModal onClose={() => setShowProfileModal(false)} />}
