@@ -1,0 +1,18 @@
+{
+  "name": "모여라 GatherUp",
+  "short_name": "모여라",
+  "description": "모임 일정을 함께 조율하는 캘린더 앱",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0a12",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

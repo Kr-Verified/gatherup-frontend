@@ -61,9 +61,8 @@ export default function SchedulePanel() {
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // Window mouse up to handle drag end outside
   useEffect(() => {
-    const handleGlobalMouseUp = () => {
+    const handleGlobalPointerUp = () => {
       if (isDragging && dragStart && dragEnd) {
         const start = dayjs(dragStart).isBefore(dayjs(dragEnd)) ? dragStart : dragEnd;
         const end = dayjs(dragStart).isBefore(dayjs(dragEnd)) ? dragEnd : dragStart;
@@ -77,8 +76,12 @@ export default function SchedulePanel() {
       setDragEnd(null);
     };
 
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    window.addEventListener('pointercancel', handleGlobalPointerUp);
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerUp);
+    };
   }, [isDragging, dragStart, dragEnd]);
 
   const resetForm = () => {
@@ -218,15 +221,25 @@ export default function SchedulePanel() {
         <div
           key={day}
           className={className}
+          data-date={dateStr}
           style={{ display: 'flex', flexDirection: 'column', padding: '4px', alignItems: 'stretch' }}
-          onMouseDown={(e) => {
-            e.preventDefault(); // prevent text selection
+          onPointerDown={(e) => {
+            e.preventDefault();
+            e.currentTarget.setPointerCapture(e.pointerId);
             setIsDragging(true);
             setDragStart(dateStr);
             setDragEnd(dateStr);
           }}
-          onMouseEnter={() => {
-            if (isDragging) setDragEnd(dateStr);
+          onPointerEnter={() => {
+            if (isDragging) {
+              setDragEnd(dateStr);
+            }
+          }}
+          onPointerMove={(e) => {
+            if (!isDragging) return;
+            const target = document.elementFromPoint(e.clientX, e.clientY);
+            const date = target instanceof HTMLElement ? target.closest<HTMLElement>('[data-date]')?.dataset.date : undefined;
+            if (date) setDragEnd(date);
           }}
         >
           <span style={{ alignSelf: 'center', marginBottom: '2px', zIndex: 2 }}>{day}</span>

@@ -24,7 +24,7 @@ export default function AvailabilityCalendar({ currentMonth, availability, membe
   const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; text: string }>({ visible: false, x: 0, y: 0, text: '' });
 
   useEffect(() => {
-    const handleGlobalMouseUp = () => {
+    const handleGlobalPointerUp = () => {
       if (isDragging && dragStart && dragEnd && onSelectRange) {
         const start = dayjs(dragStart).isBefore(dayjs(dragEnd)) ? dragStart : dragEnd;
         const end = dayjs(dragStart).isBefore(dayjs(dragEnd)) ? dragEnd : dragStart;
@@ -35,8 +35,12 @@ export default function AvailabilityCalendar({ currentMonth, availability, membe
       setDragEnd(null);
     };
 
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    window.addEventListener('pointercancel', handleGlobalPointerUp);
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerUp);
+    };
   }, [isDragging, dragStart, dragEnd, onSelectRange]);
 
   const startOfMonth = currentMonth.startOf('month');
@@ -99,25 +103,36 @@ export default function AvailabilityCalendar({ currentMonth, availability, membe
       <div
         key={day}
         className={className}
-        onMouseDown={(e) => {
+        data-date={dateStr}
+        onPointerDown={(e) => {
           e.preventDefault();
+          e.currentTarget.setPointerCapture(e.pointerId);
           setIsDragging(true);
           setDragStart(dateStr);
           setDragEnd(dateStr);
           setTooltip({ ...tooltip, visible: false });
         }}
-        onMouseEnter={(e) => {
-          if (isDragging) setDragEnd(dateStr);
+        onPointerEnter={(e) => {
+          if (isDragging) {
+            setDragEnd(dateStr);
+            return;
+          }
           if (titleText && !isDragging) {
             setTooltip({ visible: true, x: e.clientX, y: e.clientY, text: titleText });
           }
         }}
-        onMouseMove={(e) => {
+        onPointerMove={(e) => {
+          if (isDragging) {
+            const target = document.elementFromPoint(e.clientX, e.clientY);
+            const date = target instanceof HTMLElement ? target.closest<HTMLElement>('[data-date]')?.dataset.date : undefined;
+            if (date) setDragEnd(date);
+            return;
+          }
           if (!isDragging && titleText) {
             setTooltip({ visible: true, x: e.clientX, y: e.clientY, text: titleText });
           }
         }}
-        onMouseLeave={() => setTooltip({ ...tooltip, visible: false })}
+        onPointerLeave={() => setTooltip({ ...tooltip, visible: false })}
       >
         {day}
       </div>

@@ -427,6 +427,7 @@ body::before {
 }
 .calendar-day.interactive {
   user-select: none;
+  touch-action: none;
 }
 .schedule-bar {
   background: var(--primary);
