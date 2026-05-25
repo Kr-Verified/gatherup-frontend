@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { scheduleService, ScheduleResponse } from '@/features/schedule/services/scheduleService';
+import { parseIcsSchedules } from '@/features/schedule/utils/icsParser';
 import dayjs from 'dayjs';
 
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -18,6 +19,8 @@ export default function SchedulePanel() {
   const [fetching, setFetching] = useState(true);
   const [fetchError, setFetchError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Calendar State
@@ -131,6 +134,40 @@ export default function SchedulePanel() {
       fetchSchedules();
     } catch (err: any) {
       alert(err.response?.data?.error || '삭제에 실패했습니다.');
+    }
+  };
+
+  const handleImportIcs = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.ics') && file.type && !file.type.includes('calendar')) {
+      setImportMessage('ICS 파일만 가져올 수 있습니다.');
+      return;
+    }
+    if (file.size > 1_000_000) {
+      setImportMessage('ICS 파일은 1MB 이하만 가져올 수 있습니다.');
+      return;
+    }
+
+    setImporting(true);
+    setImportMessage('');
+    try {
+      const text = await file.text();
+      const parsed = parseIcsSchedules(text);
+      if (parsed.length === 0) {
+        setImportMessage('가져올 수 있는 일정이 없습니다.');
+        return;
+      }
+      const result = await scheduleService.importMany(parsed);
+      setImportMessage(`${result.importedCount}개 일정을 가져왔습니다.`);
+      setFetching(true);
+      fetchSchedules();
+    } catch (err: any) {
+      setImportMessage(err.response?.data?.error || err.message || '일정 가져오기에 실패했습니다.');
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -283,9 +320,14 @@ export default function SchedulePanel() {
           <h1 className="page-title">내 일정</h1>
           <p className="page-subtitle">개인 일정을 관리하세요. 등록한 일정은 참여한 모든 방에 반영됩니다.</p>
         </div>
+        <label className={`btn btn-secondary ${importing ? 'disabled' : ''}`} style={{ cursor: importing ? 'not-allowed' : 'pointer' }}>
+          {importing ? '가져오는 중...' : 'ICS 가져오기'}
+          <input type="file" accept=".ics,text/calendar" onChange={handleImportIcs} disabled={importing} style={{ display: 'none' }} />
+        </label>
       </div>
 
       {renderCalendar()}
+      {importMessage && <p style={{ color: importMessage.includes('실패') || importMessage.includes('없습니다') || importMessage.includes('이하') || importMessage.includes('ICS') ? 'var(--danger)' : 'var(--success)', fontSize: '0.875rem', marginBottom: '1rem' }}>{importMessage}</p>}
       {fetchError && <p style={{ color: 'var(--danger)', fontSize: '0.875rem', marginBottom: '1rem' }}>{fetchError}</p>}
 
       {/* Schedule Form */}
