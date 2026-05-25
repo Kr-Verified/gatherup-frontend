@@ -7,17 +7,19 @@ import CreateRoomModal from './CreateRoomModal';
 import JoinRoomModal from './JoinRoomModal';
 import RoomView from './RoomView';
 import SchedulePanel from '@/features/schedule/components/SchedulePanel';
+import ProfileSettingsModal from '@/features/auth/components/ProfileSettingsModal';
 
 type View = 'dashboard' | 'room' | 'schedule';
 
 export default function Dashboard() {
-  const { nickname, logout } = useUserStore();
+  const { nickname, profileImageUrl, theme, logout } = useUserStore();
   const [rooms, setRooms] = useState<RoomResponse[]>([]);
   const [view, setView] = useState<View>('dashboard');
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const fetchRooms = useCallback(async () => {
@@ -32,6 +34,10 @@ export default function Dashboard() {
   useEffect(() => {
     fetchRooms();
   }, [fetchRooms]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme || 'midnight';
+  }, [theme]);
 
   const openRoom = (roomId: string) => {
     setSelectedRoomId(roomId);
@@ -72,7 +78,9 @@ export default function Dashboard() {
           </a>
         </div>
         <div className="nav-user" style={{ position: 'relative' }}>
-          <div className="nav-avatar">{nickname.charAt(0).toUpperCase()}</div>
+          <div className="nav-avatar">
+            {profileImageUrl ? <img src={profileImageUrl} alt="" /> : nickname.charAt(0).toUpperCase()}
+          </div>
           <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{nickname}</span>
           <button className="btn btn-secondary btn-sm" onClick={() => setShowSettings(!showSettings)}>수정 ▼</button>
           
@@ -82,6 +90,7 @@ export default function Dashboard() {
               padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem',
               minWidth: '120px', zIndex: 50, backgroundColor: 'rgba(30, 41, 59, 0.95)'
             }}>
+              <button className="btn btn-secondary btn-sm" style={{ width: '100%', textAlign: 'left' }} onClick={() => { setShowSettings(false); setShowProfileModal(true); }}>프로필 수정</button>
               <button className="btn btn-secondary btn-sm" style={{ width: '100%', textAlign: 'left' }} onClick={() => { setShowSettings(false); logout(); }}>로그아웃</button>
               <button className="btn btn-danger btn-sm" style={{ width: '100%', textAlign: 'left' }} onClick={() => { setShowSettings(false); setShowDeleteConfirm(true); }}>회원탈퇴</button>
             </div>
@@ -120,7 +129,7 @@ export default function Dashboard() {
                   onClick={() => openRoom(room.id)}
                 >
                   <div className="room-card-header">
-                    <span className="room-card-name">{room.name}</span>
+                    <span className="room-card-name" style={{ color: room.nameColor }}>{room.name}</span>
                     <span className="room-card-code">{room.inviteCode}</span>
                   </div>
                   <div className="room-card-meta">
@@ -157,6 +166,7 @@ export default function Dashboard() {
           onJoined={() => { setShowJoinModal(false); fetchRooms(); }}
         />
       )}
+      {showProfileModal && <ProfileSettingsModal onClose={() => setShowProfileModal(false)} />}
       {showDeleteConfirm && (
         <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
           <div className="modal slide-up" onClick={(e) => e.stopPropagation()}>

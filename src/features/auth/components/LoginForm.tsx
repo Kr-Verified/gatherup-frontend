@@ -58,7 +58,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     setError('');
     try {
       const { user, token } = await authService.login(loginId, password);
-      setUser(user.id, user.nickname, token);
+      setUser(user.id, user.nickname, token, user.profileImageUrl, user.theme);
       onSuccess();
     } catch (err: any) {
       setError(err.response?.data?.error || '로그인에 실패했습니다.');
@@ -87,7 +87,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         age ? parseInt(age) : undefined,
         gender || undefined
       );
-      setUser(user.id, user.nickname, token);
+      setUser(user.id, user.nickname, token, user.profileImageUrl, user.theme);
       onSuccess();
     } catch (err: any) {
       setError(err.response?.data?.error || '회원가입에 실패했습니다.');
@@ -101,7 +101,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       try {
         setLoading(true);
         const { user, token } = await authService.googleLogin(tokenResponse.access_token);
-        setUser(user.id, user.nickname, token);
+        setUser(user.id, user.nickname, token, user.profileImageUrl, user.theme);
         onSuccess();
       } catch (err: any) {
         setError('구글 로그인에 실패했습니다.');

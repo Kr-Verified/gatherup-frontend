@@ -5,6 +5,8 @@ export interface UserResponse {
   nickname: string;
   age: number | null;
   gender: string | null;
+  profileImageUrl?: string | null;
+  theme?: string;
   createdAt: string;
 }
 
@@ -35,6 +37,10 @@ export const authService = {
   },
   getMe: async (): Promise<UserResponse> => {
     const { data } = await api.get('/api/user/me');
+    return data;
+  },
+  updateProfile: async (payload: Partial<{ nickname: string; profileImageUrl: string | null; theme: string }>): Promise<UserResponse> => {
+    const { data } = await api.put('/api/user/me', payload);
     return data;
   },
 };

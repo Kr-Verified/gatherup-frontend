@@ -7,6 +7,8 @@ export interface RoomResponse {
   hasPassword: boolean;
   createdAt: string;
   creatorId: string;
+  nameColor: string;
+  theme: string;
 }
 
 export interface RoomMember {
@@ -14,7 +16,7 @@ export interface RoomMember {
   roomId: string;
   userId: string;
   joinedAt: string;
-  user: { nickname: string };
+  user: { nickname: string; profileImageUrl?: string | null };
 }
 
 export interface RoomDetail {
@@ -49,6 +51,10 @@ export const roomService = {
   },
   updateName: async (id: string, name: string): Promise<RoomResponse> => {
     const { data } = await api.put(`/api/rooms/${id}`, { name });
+    return data;
+  },
+  updateSettings: async (id: string, payload: Partial<{ name: string; nameColor: string; theme: string }>): Promise<RoomResponse> => {
+    const { data } = await api.put(`/api/rooms/${id}/settings`, payload);
     return data;
   },
   getAvailableDates: async (id: string, startDate: string, endDate: string): Promise<DateAvailability[]> => {

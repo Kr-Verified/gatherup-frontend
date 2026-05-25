@@ -25,8 +25,10 @@ export default function RoomView({ roomId, onBack }: Props) {
   const [checking, setChecking] = useState(false);
 
   const [showMembers, setShowMembers] = useState(false);
-  const [isEditingName, setIsEditingName] = useState(false);
+  const [showRoomSettings, setShowRoomSettings] = useState(false);
   const [editingName, setEditingName] = useState('');
+  const [editingNameColor, setEditingNameColor] = useState('#a78bfa');
+  const [editingTheme, setEditingTheme] = useState('midnight');
   const [excludedMembers, setExcludedMembers] = useState<string[]>([]);
 
   const fetchDetail = useCallback(async () => {
@@ -65,15 +67,19 @@ export default function RoomView({ roomId, onBack }: Props) {
     }
   };
 
-  const handleUpdateName = async () => {
+  const handleUpdateRoomSettings = async () => {
     if (!editingName.trim()) return;
     try {
-      await roomService.updateName(roomId, editingName.trim());
-      setDetail(prev => prev ? { ...prev, room: { ...prev.room, name: editingName.trim() } } : null);
-      setIsEditingName(false);
+      const room = await roomService.updateSettings(roomId, {
+        name: editingName.trim(),
+        nameColor: editingNameColor,
+        theme: editingTheme,
+      });
+      setDetail(prev => prev ? { ...prev, room } : null);
+      setShowRoomSettings(false);
     } catch (err) {
       console.error(err);
-      alert('방 이름 수정에 실패했습니다.');
+      alert('방 설정 수정에 실패했습니다.');
     }
   };
 
@@ -149,37 +155,28 @@ export default function RoomView({ roomId, onBack }: Props) {
   }
 
   return (
-    <div className="slide-up">
+    <div className={`slide-up room-theme-${detail.room.theme || 'midnight'}`}>
       <div className="flex-between" style={{ marginBottom: '1.5rem', alignItems: 'flex-start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button className="btn btn-secondary btn-sm" onClick={onBack}>뒤로</button>
-            {isEditingName ? (
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input
-                  className="input"
-                  value={editingName}
-                  onChange={e => setEditingName(e.target.value)}
-                  autoFocus
-                  onKeyDown={e => e.key === 'Enter' && handleUpdateName()}
-                />
-                <button className="btn btn-primary btn-sm" onClick={handleUpdateName}>저장</button>
-                <button className="btn btn-secondary btn-sm" onClick={() => setIsEditingName(false)}>취소</button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <h1 className="page-title" style={{ marginBottom: 0 }}>{detail.room.name}</h1>
-                {detail.room.creatorId === currentUserId && (
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => { setIsEditingName(true); setEditingName(detail.room.name); }}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                  >
-                    수정
-                  </button>
-                )}
-              </div>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h1 className="page-title" style={{ marginBottom: 0, color: detail.room.nameColor, background: 'none', WebkitTextFillColor: 'currentColor' }}>{detail.room.name}</h1>
+              {detail.room.creatorId === currentUserId && (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setEditingName(detail.room.name);
+                    setEditingNameColor(detail.room.nameColor || '#a78bfa');
+                    setEditingTheme(detail.room.theme || 'midnight');
+                    setShowRoomSettings(true);
+                  }}
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                >
+                  수정
+                </button>
+              )}
+            </div>
           </div>
           <div style={{ paddingLeft: '4rem' }}>
             <p
@@ -204,7 +201,11 @@ export default function RoomView({ roomId, onBack }: Props) {
                         onClick={() => setExcludedMembers(prev => isExcluded ? prev.filter(id => id !== m.userId) : [...prev, m.userId])}
                         style={{ cursor: 'pointer', opacity: isExcluded ? 0.4 : 1, transition: 'opacity 0.2s' }}
                       >
-                        <div className="member-chip-dot" style={{ background: isExcluded ? 'var(--text-muted)' : 'var(--primary)' }}></div>
+                        {m.user.profileImageUrl ? (
+                          <img src={m.user.profileImageUrl} alt="" className="member-chip-avatar" />
+                        ) : (
+                          <div className="member-chip-dot" style={{ background: isExcluded ? 'var(--text-muted)' : 'var(--primary)' }}></div>
+                        )}
                         <span style={{ textDecoration: isExcluded ? 'line-through' : 'none' }}>{m.user.nickname}</span>
                       </div>
                     );
@@ -306,6 +307,37 @@ export default function RoomView({ roomId, onBack }: Props) {
           </div>
         </div>
       </div>
+
+      {showRoomSettings && (
+        <div className="modal-overlay" onClick={() => setShowRoomSettings(false)}>
+          <div className="modal slide-up" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">방 설정</h2>
+            <div className="flex-col-gap">
+              <div className="input-group">
+                <label htmlFor="room-edit-name">방 이름</label>
+                <input id="room-edit-name" className="input" value={editingName} onChange={(e) => setEditingName(e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label htmlFor="room-name-color">방 이름 색</label>
+                <input id="room-name-color" className="input" type="color" value={editingNameColor} onChange={(e) => setEditingNameColor(e.target.value)} style={{ padding: '0.25rem', height: '44px' }} />
+              </div>
+              <div className="input-group">
+                <label htmlFor="room-theme">방 테마</label>
+                <select id="room-theme" className="input" value={editingTheme} onChange={(e) => setEditingTheme(e.target.value)}>
+                  <option value="midnight">미드나잇</option>
+                  <option value="forest">포레스트</option>
+                  <option value="rose">로즈</option>
+                  <option value="daylight">데이라이트</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowRoomSettings(false)}>취소</button>
+              <button className="btn btn-primary" onClick={handleUpdateRoomSettings}>저장</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
