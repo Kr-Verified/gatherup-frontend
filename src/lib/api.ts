@@ -23,7 +23,7 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
     const url = error.config?.url || '';
-    const isAuthRequest = url.includes('/api/auth/login') || url.includes('/api/auth/register') || url.includes('/api/auth/google');
+    const isAuthRequest = url.includes('/api/auth/google');
 
     if (status === 401 && typeof window !== 'undefined' && !isAuthRequest) {
       localStorage.removeItem('gatherup_user_id');
